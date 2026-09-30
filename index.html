@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OpenRouter Chat</title>
+<style>
+  :root {
+    --bg: #212121;
+    --panel: #171717;
+    --border: #2f2f2f;
+    --text: #ececec;
+    --muted: #9b9b9b;
+    --accent: #10a37f;
+    --user-bubble: #2f2f2f;
+    --assistant-bubble: #212121;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 16px; font-weight: 600; }
+  .model-picker {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* ---------- Key gate ---------- */
+  #gate {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .gate-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px;
+    max-width: 460px;
+    width: 100%;
+  }
+  .gate-card h2 { font-size: 20px; margin-bottom: 8px; }
+  .gate-card p { color: var(--muted); font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
+  .gate-card input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    margin-bottom: 14px;
+    font-family: ui-monospace, monospace;
+  }
+  .gate-card input:focus { border-color: var(--accent); }
+  .gate-card button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .gate-card button:hover { opacity: 0.88; }
+  .gate-card button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .note {
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+  .note strong { color: var(--text); }
+  .error { color: #ff6b6b; font-size: 13px; margin-bottom: 12px; min-height: 18px; }
+
+  /* ---------- Chat ---------- */
+  #chat-wrap { flex: 1; display: none; flex-direction: column; overflow: hidden; }
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .msg {
+    max-width: 760px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    gap: 14px;
+    line-height: 1.6;
+    font-size: 15px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .avatar {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .user .avatar { background: #5b6eae; }
+  .assistant .avatar { background: var(--accent); }
+  .msg .content { flex: 1; padding-top: 3px; }
+  .cursor {
+    display: inline-block;
+    width: 8px; height: 16px;
+    background: var(--text);
+    vertical-align: text-bottom;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ---------- Composer ---------- */
+  #composer {
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+    padding: 14px 16px 20px;
+    flex-shrink: 0;
+  }
+  .composer-inner {
+    max-width: 760px;
+    margin: 0 auto;
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px 12px;
+  }
+  #input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    resize: none;
+    max-height: 200px;
+    line-height: 1.5;
+  }
+  #send {
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    width: 34px; height: 34px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+  }
+  #send:hover { opacity: 0.85; }
+  #send:disabled { opacity: 0.3; cursor: not-allowed; }
+  #send svg { width: 18px; height: 18px; fill: #fff; }
+  .footer-note {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>OpenRouter Chat</h1>
+  <select class="model-picker" id="model">
+    <option value="openai/gpt-4o-mini">openai/gpt-4o-mini</option>
+    <option value="openai/gpt-4o">openai/gpt-4o</option>
+    <option value="anthropic/claude-3.5-sonnet">anthropic/claude-3.5-sonnet</option>
+    <option value="google/gemini-flash-1.5">google/gemini-flash-1.5</option>
+    <option value="meta-llama/llama-3.1-8b-instruct">meta-llama/llama-3.1-8b-instruct</option>
+    <option value="mistralai/mistral-7b-instruct">mistralai/mistral-7b-instruct</option>
+  </select>
+</header>
+
+<!-- KEY GATE -->
+<div id="gate">
+  <div class="gate-card">
+    <h2>Enter your OpenRouter API key</h2>
+    <p>Get a free key at <strong>openrouter.ai/keys</strong>. Your key is kept only in memory and is destroyed the instant you close or refresh this tab.</p>
+    <div class="error" id="gate-error"></div>
+    <input id="key-input" type="password" placeholder="sk-or-v1-..." autocomplete="off" spellcheck="false" />
+    <button id="key-submit" disabled>Start chatting</button>
+    <div class="note">
+      <strong>Privacy:</strong> This page does not use localStorage, sessionStorage, cookies, or any backend. The key lives in a single JavaScript variable and is wiped on unload. Requests go directly from your browser to OpenRouter.
+    </div>
+  </div>
+</div>
+
+<!-- CHAT -->
+<div id="chat-wrap">
+  <div id="messages"></div>
+  <div id="composer">
+    <div class="composer-inner">
+      <textarea id="input" rows="1" placeholder="Message the model..."></textarea>
+      <button id="send" disabled>
+        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </div>
+    <div class="footer-note">Key held in memory only &middot; cleared on tab close</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ------------------------------------------------------------------
+  //  THE KEY LIVES ONLY HERE. Never written to storage. Wiped on unload.
+  // ------------------------------------------------------------------
+  let API_KEY = null;
+  const API_URL = "https://openrouter.ai/api/v1/chat/completions";
+
+  const conversation = []; // { role, content }
+
+  const gate = document.getElementById("gate");
+  const gateError = document.getElementById("gate-error");
+  const keyInput = document.getElementById("key-input");
+  const keySubmit = document.getElementById("key-submit");
+  const chatWrap = document.getElementById("chat-wrap");
+  const messagesEl = document.getElementById("messages");
+  const inputEl = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+  const modelEl = document.getElementById("model");
+
+  // ---- Wipe the key when the page is unloaded (close, refresh, navigate)
+  window.addEventListener("pagehide", wipeKey);
+  window.addEventListener("beforeunload", wipeKey);
+  function wipeKey() {
+    API_KEY = null;
+    conversation.length = 0;
+  }
+
+  // ---- Enable submit only when something is typed
+  keyInput.addEventListener("input", () => {
+    keySubmit.disabled = keyInput.value.trim().length < 10;
+  });
+
+  keyInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !keySubmit.disabled) keySubmit.click();
+  });
+
+  // ---- Accept the key and enter chat
+  keySubmit.addEventListener("click", () => {
+    const k = keyInput.value.trim();
+    if (!k) return;
+    API_KEY = k;
+    keyInput.value = "";           // remove from DOM
+    gateError.textContent = "";
+    gate.style.display = "none";
+    chatWrap.style.display = "flex";
+    inputEl.focus();
+
+    // Optional: validate the key with a cheap request
+    validateKey();
+  });
+
+  async function validateKey() {
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + API_KEY,
+        },
+        body: JSON.stringify({
+          model: modelEl.value,
+          messages: [{ role: "user", content: "ping" }],
+          max_tokens: 1,
+        }),
+      });
+      if (res.status === 401) {
+        failGate("That key was rejected by OpenRouter. Double-check it and try again.");
+      }
+    } catch (_) {
+      /* network hiccup — let them try anyway */
+    }
+  }
+
+  function failGate(msg) {
+    API_KEY = null;
+    conversation.length = 0;
+    chatWrap.style.display = "none";
+    gate.style.display = "flex";
+    gateError.textContent = msg;
+    keyInput.value = "";
+    keySubmit.disabled = true;
+  }
+
+  // ---- Auto-grow the textarea
+  inputEl.addEventListener("input", () => {
+    inputEl.style.height = "auto";
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + "px";
+    sendBtn.disabled = inputEl.value.trim().length === 0;
+  });
+
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!sendBtn.disabled) send();
+    }
+  });
+
+  sendBtn.addEventListener("click", send);
+
+  // ---- Render helpers -------------------------------------------------
+  function addMessage(role, content) {
+    const wrap = document.createElement("div");
+    wrap.className = "msg " + role;
+
+    const av = document.createElement("div");
+    av.className = "avatar";
+    av.textContent = role === "user" ? "U" : "AI";
+
+    const body = document.createElement("div");
+    body.className = "content";
+    body.textContent = content;
+
+    wrap.appendChild(av);
+    wrap.appendChild(body);
+    messagesEl.appendChild(wrap);
+    scrollDown();
+    return body;
+  }
+
+  function scrollDown() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  // ---- Send / stream --------------------------------------------------
+  let busy = false;
+
+  async function send() {
+    if (busy || !API_KEY) return;
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    busy = true;
+    sendBtn.disabled = true;
+    inputEl.value = "";
+    inputEl.style.height = "auto";
+
+    conversation.push({ role: "user", content: text });
+    addMessage("user", text);
+
+    // Assistant placeholder with blinking cursor
+    const assistantBody = addMessage("assistant", "");
+    const cursor = document.createElement("span");
+    cursor.className = "cursor";
+    assistantBody.appendChild(cursor);
+
+    let assistantText = "";
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + API_KEY,
+        },
+        body: JSON.stringify({
+          model: modelEl.value,
+          messages: conversation,
+          stream: true,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error("HTTP " + res.status + " — " + errText.slice(0, 300));
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split("\n");
+        buffer = lines.pop(); // keep incomplete line
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const data = trimmed.slice(5).trim();
+          if (data === "[DONE]") continue;
+          try {
+            const json = JSON.parse(data);
+            const delta = json.choices?.[0]?.delta?.content;
+            if (delta) {
+              assistantText += delta;
+              assistantBody.textContent = assistantText;
+              assistantBody.appendChild(cursor);
+              scrollDown();
+            }
+          } catch (_) { /* ignore partial JSON */ }
+        }
+      }
+
+      cursor.remove();
+      if (assistantText) {
+        conversation.push({ role: "assistant", content: assistantText });
+      } else {
+        assistantBody.textContent = "(no response)";
+      }
+    } catch (err) {
+      cursor.remove();
+      assistantBody.textContent = "Error: " + err.message;
+      if (/401/.test(err.message)) failGate("Your key was rejected. Please re-enter it.");
+    } finally {
+      busy = false;
+      sendBtn.disabled = inputEl.value.trim().length === 0;
+      inputEl.focus();
+    }
+  }
+})();
+</script>
+</body>
+</html>
